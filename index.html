@@ -152,12 +152,11 @@
 
 <div class="card">
 
-  <!-- KEY -->
+  <!-- KEY + IV -->
   <div class="row">
     <div class="col">
       <label>Key (HEX – 64 characters / 32 bytes)</label>
       <input id="keyhex" type="text" placeholder="64 hex characters">
-
       <div class="row">
         <button id="genKey">Generate Key</button>
         <button id="copyKey">Copy Key</button>
@@ -165,11 +164,9 @@
       <div class="mini">AES-256 requires exactly 64 hex characters.</div>
     </div>
 
-    <!-- IV -->
     <div class="col">
       <label>IV (HEX – 24 characters / 12 bytes)</label>
       <input id="ivhex" type="text" placeholder="24 hex characters">
-
       <div class="row">
         <button id="genIv">Generate IV</button>
         <button id="copyIv">Copy IV</button>
@@ -187,10 +184,16 @@
     <button id="copyCombined">Copy Combined (IV|Ciphertext)</button>
   </div>
 
+  <!-- CLEAR PLAINTEXT MOVED HERE -->
+  <div class="row">
+    <button id="clearBtn">Clear Plaintext</button>
+  </div>
+
   <!-- CIPHERTEXT -->
   <label>Ciphertext (Base64)</label>
   <div class="mini">Highlighted text = IV</div>
   <br>
+
   <div id="ciphertext" contenteditable="true"></div>
 
   <div class="row">
@@ -199,7 +202,6 @@
   </div>
 
   <div class="row">
-    <button id="clearBtn">Clear Plaintext</button>
     <button id="clearAllBtn">Clear All</button>
   </div>
 
@@ -306,7 +308,6 @@ $("copyCombined").onclick = () => {
   } else {
     navigator.clipboard.writeText(iv + "|" + ct);
   }
-
   msg("Combined copied");
 };
 
@@ -330,6 +331,7 @@ $("encryptBtn").onclick = async () => {
 
     const ct = await encrypt(pt, key, iv);
     const combined = iv + "|" + ct;
+
     $("ciphertext").innerHTML = highlightIV(iv, combined);
 
     msg("Encryption successful");
