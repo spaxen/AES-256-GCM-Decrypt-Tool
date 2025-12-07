@@ -1,4 +1,4 @@
-AES-256-GCM Encryption Tool
+AES-256-GCM Decrypt Tool
 -------------------
 Client-side AES-256-GCM encryption and decryption tool built using the
 Web Crypto API. All cryptographic operations are performed entirely
