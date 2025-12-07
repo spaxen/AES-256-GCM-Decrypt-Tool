@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AES-256-GCM Decrypt Tool — Spaxen</title>
+  <title>AES-256-GCM Decrypt Tool — Spaxen (v1.1)</title>
 
   <style>
     :root{
@@ -108,6 +108,13 @@
       margin-bottom: 16px;
     }
 
+    .warning {
+      font-size:13px;
+      color:var(--danger);
+      font-weight:700;
+      margin-bottom:10px;
+    }
+
     /* MOBILE FIX */
     @media (max-width:720px){
       .row { flex-direction: column; }
@@ -136,7 +143,7 @@
   <div class="header">
     <div class="logo">AES</div>
     <div>
-      <h1>AES-256-GCM <br> Decrypt Tool</h1>
+      <h1>AES-256-GCM <br> Decrypt Tool — v1.1</h1>
       <div class="subtitle">Client-side authenticated encryption — AES-256-GCM</div>
     </div>
   </div>
@@ -150,7 +157,7 @@
 
         <div style="flex:1;min-width:260px">
           <label>Key (HEX – 64 characters)</label>
-          <input id="keyhex" type="text" maxlength="64">
+          <input id="keyhex" type="text" maxlength="64" inputmode="text" autocomplete="off">
 
           <div class="btns" style="margin-top:10px">
             <button id="genKey">Generate Key</button>
@@ -162,7 +169,7 @@
 
         <div style="flex:1;min-width:200px">
           <label>IV (HEX – 24 characters)</label>
-          <input id="ivhex" type="text" maxlength="24">
+          <input id="ivhex" type="text" maxlength="24" inputmode="text" autocomplete="off">
 
           <div class="btns" style="margin-top:10px">
             <button id="genIv">Generate IV</button>
@@ -173,6 +180,7 @@
         </div>
 
       </div>
+      <div class="warning">WARNING: Never reuse the same IV with the same key — it completely breaks the security of the cipher.</div>
     </div>
 
     <!-- CIPHERTEXT -->
@@ -217,27 +225,48 @@
 const $ = id => document.getElementById(id);
 
 /* Helpers */
-function bytesToHex(bytes){ return [...bytes].map(x => x.toString(16).padStart(2,"0")).join(""); }
+function bytesToHex(bytes){
+  // Accept ArrayBuffer or TypedArray
+  const u = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes;
+  return [...u].map(x => x.toString(16).padStart(2,"0")).join("");
+}
+
 function hexToBytes(hex){
-  hex = hex.trim();
-  if(!/^[0-9a-fA-F]+$/.test(hex)) throw new Error("Invalid HEX");
+  hex = String(hex).trim();
+  if (hex.length === 0) return new Uint8Array(0);
+  if (hex.length % 2 !== 0) throw new Error("HEX måste ha jämn längd (byte-par).");
+  if(!/^[0-9a-fA-F]+$/.test(hex)) throw new Error("Ogiltigt HEX-tecken");
   return Uint8Array.from(hex.match(/.{2}/g).map(b=>parseInt(b,16)));
 }
+
 function base64ToBytes(b64){
-  const bin = atob(b64.trim());
-  return Uint8Array.from(bin, c => c.charCodeAt(0));
+  try {
+    const s = String(b64).trim();
+    if (!s) return new Uint8Array(0);
+    const bin = atob(s);
+    return Uint8Array.from(bin, c => c.charCodeAt(0));
+  } catch {
+    throw new Error("Ogiltig Base64-sträng");
+  }
 }
 function bytesToBase64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
 
+/* Key import with validation */
 async function importKey(hex){
-  const raw = hexToBytes(hex);
-  if(raw.length !== 32) throw new Error("Key must be 32 bytes");
-  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt","decrypt"]);
+  try {
+    const raw = hexToBytes(hex);
+    if(raw.length !== 32) throw new Error("Nyckel måste vara 32 bytes (64 hex-tecken).");
+    return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt","decrypt"]);
+  } catch (e) {
+    // Ge ett mer användarvänligt fel
+    throw new Error("Fel vid nyckel-import: " + e.message);
+  }
 }
 
 async function encrypt(pt, keyHex, ivHex){
   const key = await importKey(keyHex);
   const iv = hexToBytes(ivHex);
+  if (iv.length !== 12) throw new Error("IV måste vara 12 bytes (24 hex-tecken).");
   const data = new TextEncoder().encode(pt);
   const enc = await crypto.subtle.encrypt({name:"AES-GCM", iv, tagLength:128}, key, data);
   return bytesToBase64(enc);
@@ -246,6 +275,7 @@ async function encrypt(pt, keyHex, ivHex){
 async function decrypt(ct, keyHex, ivHex){
   const key = await importKey(keyHex);
   const iv = hexToBytes(ivHex);
+  if (iv.length !== 12) throw new Error("IV måste vara 12 bytes (24 hex-tecken).");
   const data = base64ToBytes(ct);
   const dec = await crypto.subtle.decrypt({name:"AES-GCM", iv, tagLength:128}, key, data);
   return new TextDecoder().decode(dec);
@@ -272,19 +302,21 @@ $("copyIv").onclick = () => navigator.clipboard.writeText($("ivhex").value);
 /* Encrypt + copy combined */
 $("encryptCopyBtn").onclick = async () => {
   try {
+    if (!$("keyhex").value.trim()) throw new Error("Key saknas");
     const newIv = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
-    const ct = await encrypt($("plaintext").innerText, $("keyhex").value, newIv);
+    const plaintext = $("plaintext").textContent;
+    const ct = await encrypt(plaintext, $("keyhex").value.trim(), newIv);
     const combined = newIv + "|" + ct;
 
     $("ciphertext").textContent = combined;
     applyIvHighlight();
     await navigator.clipboard.writeText(combined);
 
-    showMessage("Encrypted and copied");
-
-    $("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
+    showMessage("Encrypted and copied (IV|Cipher) — IV visas i fältet.");
+    // visa den IV som faktiskt användes
+    $("ivhex").value = newIv;
   } catch (e) {
-    showError(e.message);
+    showError(e.message || String(e));
   }
 };
 
@@ -292,11 +324,11 @@ $("encryptCopyBtn").onclick = async () => {
 $("pasteCombined").onclick = async () => {
   try{
     const txt = await navigator.clipboard.readText();
-    if(!txt.includes("|")) throw new Error("Combined format required");
+    if(!txt.includes("|")) throw new Error("Kräver kombinerat format 'IV|Cipher'");
     $("ciphertext").textContent = txt;
     applyIvHighlight();
     showMessage("Combined pasted");
-  }catch(e){ showError(e.message); }
+  }catch(e){ showError(e.message || String(e)); }
 };
 
 /* Decrypt */
@@ -308,21 +340,24 @@ $("decryptBtn").onclick = async () => {
     let iv, ct;
 
     if(raw.includes("|")){
-      const [ivPart, ctPart] = raw.split("|");
-      iv = ivPart.trim();
-      ct = ctPart.trim();
+      const firstSep = raw.indexOf("|");
+      iv = raw.slice(0, firstSep).trim();
+      ct = raw.slice(firstSep + 1).trim();
       $("ivhex").value = iv;
     } else {
       iv = $("ivhex").value.trim();
       ct = raw;
     }
 
+    if (!iv) throw new Error("IV saknas");
+    if (!ct) throw new Error("Ciphertext saknas");
+
     const pt = await decrypt(ct, $("keyhex").value.trim(), iv);
     $("plaintext").textContent = pt;
 
     showMessage("Decryption successful");
   } catch(e){
-    showError("Decryption failed: " + e.message);
+    showError("Decryption failed: " + (e.message || String(e)));
   }
 };
 
@@ -341,28 +376,40 @@ $("clearBtn").onclick = () => {
 $("clearAllBtn").onclick = () => {
   $("plaintext").textContent = "";
   $("ciphertext").textContent = "";
+  $("keyhex").value = "";
   $("message").style.display="none";
   $("error").style.display="none";
+  $("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
+  showMessage("All cleared and fresh IV generated");
 };
 
 /* Highlight IV */
 function applyIvHighlight() {
   const el = $("ciphertext");
-  let raw = el.textContent.trim();
+  let raw = el.textContent || "";
 
-  if (!raw.includes("|")) {
+  const firstSep = raw.indexOf("|");
+  if (firstSep === -1) {
+    // inget separator, visa rå text ok
     el.textContent = raw;
     return;
   }
 
-  const [iv, ct] = raw.split("|");
+  const iv = raw.slice(0, firstSep).trim();
+  const ct = raw.slice(firstSep + 1);
 
-  if (!/^[0-9a-fA-F]{24}$/.test(iv.trim())) {
+  if (!/^[0-9a-fA-F]{24}$/.test(iv)) {
     el.textContent = raw;
     return;
   }
 
-  el.innerHTML = `<span class="iv-highlight">${iv}</span>|${ct}`;
+  // Escape ct text to avoid HTML injection
+  const escapedCt = ct
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  el.innerHTML = `<span class="iv-highlight">${iv}</span>|${escapedCt}`;
 }
 
 $("ciphertext").addEventListener("blur", applyIvHighlight);
@@ -389,7 +436,7 @@ enableAutoSelect($("ivhex"));
 enableAutoSelect($("ciphertext"));
 enableAutoSelect($("plaintext"));
 
-/* Fresh IV */
+/* Fresh IV on load */
 $("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
 </script>
 
