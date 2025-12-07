@@ -184,7 +184,7 @@ footer{
 
     <!-- CIPHERTEXT -->
     <div class="section">
-      <label>Ciphertext (IV|Cipher)</label>
+      <label>Ciphertext ("Cipher" or "IV|Cipher")</label>
       <div id="ciphertext" class="box" contenteditable="true"></div>
 
       <div class="btns" style="margin-top:12px">
@@ -231,11 +231,7 @@ function enableAutoSelect(el) {
     }, 10);
   });
 
-  const stopClear = e => e.preventDefault();
-  el.addEventListener("pointerup", stopClear);
-  el.addEventListener("mouseup", stopClear);
-  el.addEventListener("touchend", stopClear, { passive:false });
-  el.addEventListener("click", stopClear);
+
 }
 
 /* ---------- HELPERS ---------- */
