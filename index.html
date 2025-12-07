@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AES-256-GCM Decrypt Tool — Spaxen</title>
+
   <style>
     :root{
       --bg: linear-gradient(135deg,#eef2ff,#f8fafc);
@@ -20,19 +21,17 @@
     }
 
     *{box-sizing:border-box}
-    html,body{height:100%}
+
     body{
       margin:0;
       font-family: system-ui,-apple-system,"Segoe UI",Roboto,Arial;
       background: var(--bg);
       color:var(--text);
-      display:flex;
-      align-items:center;
-      justify-content:center;
       padding:28px;
     }
 
-    .app{width:100%; max-width:1024px}
+    .app{width:100%; max-width:1024px; margin:0 auto;}
+
     .header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
     .logo{
       width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,var(--primary),var(--primary-600));
@@ -58,28 +57,27 @@
     }
 
     label{display:block;font-weight:700;font-size:13px;margin-bottom:8px}
-    .controls{display:flex;gap:12px;flex-wrap:wrap}
 
     input[type="text"]{
-      width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);font-family:monospace;font-size:13px;
+      width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);
+      font-family:monospace;font-size:13px;
       background:#fbfdff;outline:none;transition:box-shadow .14s,border-color .14s;
     }
     input[type="text"]:focus{box-shadow:0 0 0 4px rgba(79,70,229,.06);border-color:var(--primary)}
 
-    /* contenteditable boxes */
     .box{
       width:100%;min-height:160px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);
-      background:#fbfdff; font-family:monospace;font-size:13px; white-space:pre-wrap; word-break:break-word; outline:none;
+      background:#fbfdff;font-family:monospace;font-size:13px;
+      white-space:pre-wrap; word-break:break-word; outline:none;
     }
     .box:focus{box-shadow:0 0 0 4px rgba(79,70,229,.06);border-color:var(--primary)}
 
-    .row{display:flex;gap:12px;align-items:center}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
     .btns{display:flex;gap:12px;flex-wrap:wrap}
 
     button{
-      padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:#f1f5f9;font-weight:700;cursor:pointer;
-      transition:transform .12s;
-      min-width:120px;
+      padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:#f1f5f9;
+      font-weight:700;cursor:pointer;transition:transform .12s;min-width:120px;
     }
     button:hover{transform:translateY(-2px)}
     .primary{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -88,7 +86,6 @@
     .msg{margin-top:12px;font-weight:700;color:var(--success);display:none}
     .error{margin-top:12px;font-weight:700;color:var(--danger);display:none}
 
-    /* Highlighted IV */
     .iv-highlight {
       background: rgba(79,70,229,0.18);
       padding: 2px 6px;
@@ -97,18 +94,27 @@
       color: var(--primary-600);
     }
 
-.note {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: -4px;
-  margin-bottom: 8px;
-   margin-bottom: 16px; /* <-- Ger en extra tom rad */
-}
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: -4px;
+      margin-bottom: 16px;
+    }
 
+    /* MOBILE FIX */
     @media (max-width:720px){
       .row{flex-direction:column}
-      .btns{flex-direction:column}
       button{width:100%}
+
+      .plaintext-buttons{
+        display:flex;
+        flex-direction:column;
+        gap:12px;
+        width:100%;
+      }
+      .plaintext-buttons button{
+        width:100%;
+      }
     }
   </style>
 </head>
@@ -132,7 +138,7 @@
     <div class="section">
       <div style="display:flex;gap:12px;flex-wrap:wrap">
 
-        <div class="col" style="flex:1;min-width:260px">
+        <div style="flex:1;min-width:260px">
           <label>Key (HEX – 64 characters)</label>
           <input id="keyhex" type="text" maxlength="64">
 
@@ -144,7 +150,7 @@
           <div class="muted" style="margin-top:6px">32 bytes (64 hex chars).</div>
         </div>
 
-        <div class="col" style="flex:1;min-width:200px">
+        <div style="flex:1;min-width:200px">
           <label>IV (HEX – 24 characters)</label>
           <input id="ivhex" type="text" maxlength="24">
 
@@ -163,6 +169,7 @@
     <div class="section">
       <label>Ciphertext - Base64 (Cipher or "IV|Cipher")</label>
       <div class="note">Highlighted text is IV</div>
+
       <div id="ciphertext" class="box" contenteditable="true" spellcheck="false"></div>
 
       <div class="row" style="margin-top:12px">
@@ -179,15 +186,11 @@
       <label>Plaintext</label>
       <div id="plaintext" class="box" contenteditable="true" spellcheck="false"></div>
 
-      <div class="row" style="margin-top:12px">
-        <div class="btns" style="flex:1">
-          <button id="encryptCopyBtn" class="primary">Encrypt & Copy Combined</button>
-        </div>
-
-        <div class="btns" style="margin-left:auto">
-          <button id="clearBtn" class="danger">Clear Plaintext</button>
-          <button id="clearAllBtn">Clear All</button>
-        </div>
+      <!-- FIXED BUTTON LAYOUT -->
+      <div class="row plaintext-buttons" style="margin-top:12px">
+        <button id="encryptCopyBtn" class="primary">Encrypt & Copy Combined</button>
+        <button id="clearBtn" class="danger">Clear Plaintext</button>
+        <button id="clearAllBtn">Clear All</button>
       </div>
     </div>
 
@@ -204,7 +207,7 @@
 <script>
 const $ = id => document.getElementById(id);
 
-/* Utility: HEX ⇄ Bytes ⇄ Base64 */
+/* Utility functions */
 function bytesToHex(bytes){ return [...bytes].map(x => x.toString(16).padStart(2,"0")).join(""); }
 function hexToBytes(hex){
   hex = hex.trim();
@@ -217,14 +220,12 @@ function base64ToBytes(b64){
 }
 function bytesToBase64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
 
-/* Key import */
 async function importKey(hex){
   const raw = hexToBytes(hex);
   if(raw.length !== 32) throw new Error("Key must be 32 bytes");
   return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt","decrypt"]);
 }
 
-/* Encrypt/Decrypt */
 async function encrypt(pt, keyHex, ivHex){
   const key = await importKey(keyHex);
   const iv = hexToBytes(ivHex);
@@ -232,6 +233,7 @@ async function encrypt(pt, keyHex, ivHex){
   const enc = await crypto.subtle.encrypt({name:"AES-GCM", iv, tagLength:128}, key, data);
   return bytesToBase64(enc);
 }
+
 async function decrypt(ct, keyHex, ivHex){
   const key = await importKey(keyHex);
   const iv = hexToBytes(ivHex);
@@ -240,11 +242,11 @@ async function decrypt(ct, keyHex, ivHex){
   return new TextDecoder().decode(dec);
 }
 
-/* UI Helpers */
+/* Messages */
 function showMessage(t){ $("error").style.display="none"; $("message").style.display="block"; $("message").textContent=t; }
 function showError(t){ $("message").style.display="none"; $("error").style.display="block"; $("error").textContent=t; }
 
-/* Generate Keys / IV */
+/* Generate Key / IV */
 $("genKey").onclick = () => {
   $("keyhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
   showMessage("Key generated");
@@ -254,56 +256,41 @@ $("genIv").onclick = () => {
   showMessage("IV generated");
 };
 
-/* Copy Buttons */
+/* Copy */
 $("copyKey").onclick = () => navigator.clipboard.writeText($("keyhex").value);
 $("copyIv").onclick = () => navigator.clipboard.writeText($("ivhex").value);
 
-
-/* Encrypt + Copy Combined */
+/* Encrypt + copy combined */
 $("encryptCopyBtn").onclick = async () => {
   try {
-    // 1. Skapa nytt IV för *denna* kryptering
     const newIv = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
-
-    // 2. Kryptera med det nya IV:t
     const ct = await encrypt($("plaintext").innerText, $("keyhex").value, newIv);
-
-    // 3. Skapa combined string
     const combined = newIv + "|" + ct;
 
-    // 4. Skriv ut i ciphertext-rutan
     $("ciphertext").textContent = combined;
-
-    // 5. Highlighta IV
     applyIvHighlight();
-
-    // 6. Kopiera till clipboard
     await navigator.clipboard.writeText(combined);
 
     showMessage("Encrypted and copied");
 
-    // 7. Generera nytt IV för NÄSTA kryptering (separat från newIv)
     $("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
-
   } catch (e) {
     showError(e.message);
   }
 };
 
-
-
 /* Paste Combined */
 $("pasteCombined").onclick = async () => {
   try{
     const txt = await navigator.clipboard.readText();
-    if(!txt.includes("|")) throw new Error("Combined format required (IV|Ciphertext)");
+    if(!txt.includes("|")) throw new Error("Combined format required");
     $("ciphertext").textContent = txt;
     applyIvHighlight();
     showMessage("Combined pasted");
   }catch(e){ showError(e.message); }
 };
 
-/* Decrypt (single button, unified logic) */
+/* Decrypt */
 $("decryptBtn").onclick = async () => {
   try {
     const raw = $("ciphertext").textContent.trim();
@@ -312,9 +299,9 @@ $("decryptBtn").onclick = async () => {
     let iv, ct;
 
     if(raw.includes("|")){
-      const parts = raw.split("|");
-      iv = parts[0].trim();
-      ct = parts[1].trim();
+      const [ivPart, ctPart] = raw.split("|");
+      iv = ivPart.trim();
+      ct = ctPart.trim();
       $("ivhex").value = iv;
     } else {
       iv = $("ivhex").value.trim();
@@ -323,26 +310,25 @@ $("decryptBtn").onclick = async () => {
 
     const pt = await decrypt(ct, $("keyhex").value.trim(), iv);
     $("plaintext").textContent = pt;
+
     showMessage("Decryption successful");
   } catch(e){
     showError("Decryption failed: " + e.message);
   }
 };
 
-/* Clear Ciphertext */
+/* Clear buttons */
 $("clearCipherBtn").onclick = () => {
   $("ciphertext").textContent = "";
   showMessage("Ciphertext cleared");
 };
 
-/* Clear Plaintext */
 $("clearBtn").onclick = () => {
   $("plaintext").textContent = "";
   $("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
   showMessage("Plaintext cleared");
 };
 
-/* Clear All */
 $("clearAllBtn").onclick = () => {
   $("plaintext").textContent = "";
   $("ciphertext").textContent = "";
@@ -350,24 +336,7 @@ $("clearAllBtn").onclick = () => {
   $("error").style.display="none";
 };
 
-/* Auto-select on focus */
-function enableAutoSelect(el) {
-  el.addEventListener("focus", () => {
-    setTimeout(() => {
-      if (el.tagName === "INPUT") {
-        el.select();
-      } else {
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-    }, 10);
-  });
-}
-
-/* Highlight IV inside ciphertext */
+/* Highlight IV */
 function applyIvHighlight() {
   const el = $("ciphertext");
   let raw = el.textContent.trim();
@@ -387,17 +356,31 @@ function applyIvHighlight() {
   el.innerHTML = `<span class="iv-highlight">${iv}</span>|${ct}`;
 }
 
-/* Highlight on input and blur */
-$("ciphertext").addEventListener("input", applyIvHighlight);
 $("ciphertext").addEventListener("blur", applyIvHighlight);
 
-/* Auto-select for all fields */
+/* Auto-select */
+function enableAutoSelect(el) {
+  el.addEventListener("focus", () => {
+    setTimeout(() => {
+      if (el.tagName === "INPUT") {
+        el.select();
+      } else {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }, 10);
+  });
+}
+
 enableAutoSelect($("keyhex"));
 enableAutoSelect($("ivhex"));
 enableAutoSelect($("ciphertext"));
 enableAutoSelect($("plaintext"));
 
-/* Fresh IV on load */
+/* Fresh IV */
 $("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
 </script>
 
