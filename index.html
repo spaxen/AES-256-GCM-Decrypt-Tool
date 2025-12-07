@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AES-256-GCM Decrypt Tool — Spaxen (v1.1)</title>
+  <title>AES-256-GCM Decrypt Tool — Spaxen (v1.3a)</title>
 
   <style>
     :root{
@@ -16,7 +16,6 @@
       --border: #e6e9ef;
       --danger: #b91c1c;
       --success: #15803d;
-      --radius: 14px;
     }
 
     *{box-sizing:border-box}
@@ -110,13 +109,25 @@
       margin-top:10px;
     }
 
-    .key-col,
-    .iv-col{
-      flex:1;
-      min-width:0;
+    .iv-highlight{
+      background:#e0e7ff;
+      color:#3730a3;
+      font-weight:700;
+      padding:2px 6px;
+      border-radius:6px;
     }
 
-    /* ✅ MOBILFIX */
+    .key-col,
+    .iv-col{ flex:1; min-width:0; }
+
+footer{
+  margin-top:28px;
+  padding:18px 12px;
+  text-align:center;
+  font-size:12px;
+  color:#64748b;
+}
+
     @media (max-width:720px){
       .row{flex-direction:column}
       .btns{flex-direction:column;width:100%}
@@ -133,13 +144,14 @@
   <div class="header">
     <div class="logo">AES</div>
     <div>
-      <h1>AES-256-GCM <br> Decrypt Tool — v1.1</h1>
+      <h1>AES-256-GCM <br> Decrypt Tool — v1.3a</h1>
       <div class="subtitle">Client-side authenticated encryption — AES-256-GCM</div>
     </div>
   </div>
 
   <div class="card">
 
+    <!-- KEY & IV -->
     <div class="section">
       <div class="row">
 
@@ -150,7 +162,7 @@
             <button id="genKey">Generate Key</button>
             <button id="copyKey">Copy Key</button>
           </div>
-          <div class="muted">32 bytes (64 hex).</div>
+          <div class="muted">32 bytes (64 hex).<br><br></div>
         </div>
 
         <div class="iv-col">
@@ -160,7 +172,7 @@
             <button id="genIv">Generate IV</button>
             <button id="copyIv">Copy IV</button>
           </div>
-          <div class="muted">12 bytes (24 hex).</div>
+          <div class="muted">12 bytes (24 hex).<br><br></div>
         </div>
 
       </div>
@@ -170,6 +182,7 @@
       </div>
     </div>
 
+    <!-- CIPHERTEXT -->
     <div class="section">
       <label>Ciphertext (IV|Cipher)</label>
       <div id="ciphertext" class="box" contenteditable="true"></div>
@@ -181,6 +194,7 @@
       </div>
     </div>
 
+    <!-- PLAINTEXT -->
     <div class="section">
       <label>Plaintext</label>
       <div id="plaintext" class="box" contenteditable="true"></div>
@@ -201,14 +215,141 @@
 <script>
 const $ = id => document.getElementById(id);
 
-const bytesToHex = b => [...b].map(x=>x.toString(16).padStart(2,"0")).join("");
-const hexToBytes = h => Uint8Array.from(h.match(/.{2}/g).map(b=>parseInt(b,16)));
+/* ---------- AUTO-SELECT FIX ---------- */
+function enableAutoSelect(el) {
+  el.addEventListener("focus", () => {
+    setTimeout(() => {
+      if (el.tagName === "INPUT") {
+        try { el.select(); } catch {}
+      } else {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        const s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+      }
+    }, 10);
+  });
 
+  const stopClear = e => e.preventDefault();
+  el.addEventListener("pointerup", stopClear);
+  el.addEventListener("mouseup", stopClear);
+  el.addEventListener("touchend", stopClear, { passive:false });
+  el.addEventListener("click", stopClear);
+}
+
+/* ---------- HELPERS ---------- */
+const bytesToHex = b => [...b].map(x=>x.toString(16).padStart(2,"0")).join("");
+const hexToBytes = h => {
+  if (!/^[0-9a-fA-F]+$/.test(h) || h.length % 2 !== 0) throw new Error("Invalid HEX");
+  return Uint8Array.from(h.match(/.{2}/g).map(b=>parseInt(b,16)));
+};
+
+/* ---------- CRYPTO ---------- */
+async function importKey(hex){
+  const raw = hexToBytes(hex);
+  if(raw.length !== 32) throw new Error("Key must be 32 bytes (64 hex)");
+  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt","decrypt"]);
+}
+
+async function encrypt(pt, keyHex, ivHex){
+  const key = await importKey(keyHex);
+  const iv = hexToBytes(ivHex);
+  const data = new TextEncoder().encode(pt);
+  const enc = await crypto.subtle.encrypt({ name:"AES-GCM", iv, tagLength:128 }, key, data);
+  return btoa(String.fromCharCode(...new Uint8Array(enc)));
+}
+
+async function decrypt(ct, keyHex, ivHex){
+  const key = await importKey(keyHex);
+  const iv = hexToBytes(ivHex);
+  const data = Uint8Array.from(atob(ct), c=>c.charCodeAt(0));
+  const dec = await crypto.subtle.decrypt({ name:"AES-GCM", iv, tagLength:128 }, key, data);
+  return new TextDecoder().decode(dec);
+}
+
+/* ---------- IV HIGHLIGHT ---------- */
+function applyIvHighlight(){
+  const el = $("ciphertext");
+  const raw = el.textContent || "";
+  const sep = raw.indexOf("|");
+
+  if (sep === -1) return;
+
+  const iv = raw.slice(0, sep).trim();
+  const ct = raw.slice(sep + 1);
+
+  if (!/^[0-9a-fA-F]{24}$/.test(iv)) return;
+
+  const safeCt = ct.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  el.innerHTML = `<span class="iv-highlight">${iv}</span>|${safeCt}`;
+}
+
+$("ciphertext").addEventListener("blur", applyIvHighlight);
+
+/* ---------- BUTTONS ---------- */
 $("genKey").onclick=()=> $("keyhex").value=bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
 $("genIv").onclick=()=> $("ivhex").value=bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
 
 $("copyKey").onclick=()=>navigator.clipboard.writeText($("keyhex").value);
 $("copyIv").onclick=()=>navigator.clipboard.writeText($("ivhex").value);
+
+$("encryptCopyBtn").onclick = async () => {
+  try {
+    const key = $("keyhex").value.trim();
+    const iv  = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
+    const pt  = $("plaintext").textContent;
+
+    const ct = await encrypt(pt, key, iv);
+    const combined = iv + "|" + ct;
+
+    $("ciphertext").textContent = combined;
+    applyIvHighlight();
+    $("ivhex").value = iv;
+
+    await navigator.clipboard.writeText(combined);
+
+    $("message").style.display="block";
+    $("error").style.display="none";
+    $("message").textContent="Encrypted & copied";
+  } catch (e) {
+    $("message").style.display="none";
+    $("error").style.display="block";
+    $("error").textContent=e.message;
+  }
+};
+
+$("decryptBtn").onclick = async () => {
+  try {
+    let raw = $("ciphertext").textContent.trim();
+    let iv, ct;
+
+    if (raw.includes("|")){
+      [iv, ct] = raw.split("|",2);
+      $("ivhex").value = iv;
+    } else {
+      iv = $("ivhex").value.trim();
+      ct = raw;
+    }
+
+    const pt = await decrypt(ct, $("keyhex").value.trim(), iv);
+    $("plaintext").textContent = pt;
+
+    $("message").style.display="block";
+    $("error").style.display="none";
+    $("message").textContent="Decryption successful";
+  } catch (e) {
+    $("message").style.display="none";
+    $("error").style.display="block";
+    $("error").textContent="Decrypt failed: " + e.message;
+  }
+};
+
+$("pasteCombined").onclick = async () => {
+  const txt = await navigator.clipboard.readText();
+  $("ciphertext").textContent = txt;
+  applyIvHighlight();
+};
 
 $("clearCipherBtn").onclick=()=> $("ciphertext").textContent="";
 $("clearBtn").onclick=()=> $("plaintext").textContent="";
@@ -219,8 +360,20 @@ $("clearAllBtn").onclick=()=>{
   $("ivhex").value="";
 };
 
+/* ---------- INIT ---------- */
 $("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
-</script>
 
+enableAutoSelect($("keyhex"));
+enableAutoSelect($("ivhex"));
+enableAutoSelect($("ciphertext"));
+enableAutoSelect($("plaintext"));
+</script>
+<footer>
+  <strong>AES-256-GCM Decrypt Tool</strong><br>
+  Created by Spaxen Karlsson <br>— fully client-side.<br><br>
+  No data is ever transmitted.<br>  
+  Use at your own risk.<br> 
+  No warranties, express or implied.
+</footer>
 </body>
 </html>
