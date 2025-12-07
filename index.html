@@ -83,6 +83,13 @@
     .primary{background:var(--primary);color:#fff;border-color:var(--primary)}
     .danger{background:#fff6f6;border-color:#fee2e2;color:var(--danger)}
 
+    /* Strong red button */
+    .danger-strong{
+      background:#7f1d1d;
+      border-color:#450a0a;
+      color:white;
+    }
+
     .msg{margin-top:12px;font-weight:700;color:var(--success);display:none}
     .error{margin-top:12px;font-weight:700;color:var(--danger);display:none}
 
@@ -103,18 +110,21 @@
 
     /* MOBILE FIX */
     @media (max-width:720px){
-      .row{flex-direction:column}
-      button{width:100%}
+      .row { flex-direction: column; }
+      button { width: 100%; }
 
-      .plaintext-buttons{
+      .btns {
+        width: 100%;
+        flex-direction: column;
+      }
+
+      .plaintext-buttons {
         display:flex;
         flex-direction:column;
         gap:12px;
         width:100%;
       }
-      .plaintext-buttons button{
-        width:100%;
-      }
+      .plaintext-buttons button { width:100%; }
     }
   </style>
 </head>
@@ -126,7 +136,7 @@
   <div class="header">
     <div class="logo">AES</div>
     <div>
-      <h1>AES-256-GCM Decrypt Tool</h1>
+      <h1>AES-256-GCM <br> Decrypt Tool</h1>
       <div class="subtitle">Client-side authenticated encryption — AES-256-GCM</div>
     </div>
   </div>
@@ -147,7 +157,7 @@
             <button id="copyKey">Copy Key</button>
           </div>
 
-          <div class="muted" style="margin-top:6px">32 bytes (64 hex chars).</div>
+          <div class="muted" style="margin-top:6px">32 bytes (64 hex chars).</div><br><br>
         </div>
 
         <div style="flex:1;min-width:200px">
@@ -167,7 +177,7 @@
 
     <!-- CIPHERTEXT -->
     <div class="section">
-      <label>Ciphertext - Base64 (Cipher or "IV|Cipher")</label>
+      <label>Ciphertext - Base64 <br>(Cipher or "IV|Cipher")</label>
       <div class="note">Highlighted text is IV</div>
 
       <div id="ciphertext" class="box" contenteditable="true" spellcheck="false"></div>
@@ -186,11 +196,10 @@
       <label>Plaintext</label>
       <div id="plaintext" class="box" contenteditable="true" spellcheck="false"></div>
 
-      <!-- FIXED BUTTON LAYOUT -->
       <div class="row plaintext-buttons" style="margin-top:12px">
         <button id="encryptCopyBtn" class="primary">Encrypt & Copy Combined</button>
         <button id="clearBtn" class="danger">Clear Plaintext</button>
-        <button id="clearAllBtn">Clear All</button>
+        <button id="clearAllBtn" class="danger-strong">Clear All</button>
       </div>
     </div>
 
@@ -198,7 +207,7 @@
     <div id="error" class="error"></div>
 
     <div style="margin-top:14px;font-size:12px;color:#64748b;text-align:center">
-      Created by Spaxen Karlsson — fully client-side.
+      Created by Spaxen Karlsson <br>— fully client-side.
     </div>
 
   </div>
@@ -207,7 +216,7 @@
 <script>
 const $ = id => document.getElementById(id);
 
-/* Utility functions */
+/* Helpers */
 function bytesToHex(bytes){ return [...bytes].map(x => x.toString(16).padStart(2,"0")).join(""); }
 function hexToBytes(hex){
   hex = hex.trim();
@@ -242,11 +251,11 @@ async function decrypt(ct, keyHex, ivHex){
   return new TextDecoder().decode(dec);
 }
 
-/* Messages */
+/* UI messages */
 function showMessage(t){ $("error").style.display="none"; $("message").style.display="block"; $("message").textContent=t; }
 function showError(t){ $("message").style.display="none"; $("error").style.display="block"; $("error").textContent=t; }
 
-/* Generate Key / IV */
+/* Generate */
 $("genKey").onclick = () => {
   $("keyhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
   showMessage("Key generated");
@@ -317,7 +326,7 @@ $("decryptBtn").onclick = async () => {
   }
 };
 
-/* Clear buttons */
+/* Clear */
 $("clearCipherBtn").onclick = () => {
   $("ciphertext").textContent = "";
   showMessage("Ciphertext cleared");
@@ -358,7 +367,7 @@ function applyIvHighlight() {
 
 $("ciphertext").addEventListener("blur", applyIvHighlight);
 
-/* Auto-select */
+/* Auto-select on focus */
 function enableAutoSelect(el) {
   el.addEventListener("focus", () => {
     setTimeout(() => {
