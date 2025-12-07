@@ -1,387 +1,404 @@
 <!doctype html>
-<html lang="en">
+<html lang="sv">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AES-256-GCM Encryption Tool</title>
-
+  <title>AES-256-GCM Decrypt Tool — Spaxen</title>
   <style>
-    body {
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-      max-width: 1000px;
-      margin: 32px auto;
-      padding: 16px;
-      background: #f6f7f9;
-      color: #111;
+    :root{
+      --bg: linear-gradient(135deg,#eef2ff,#f8fafc);
+      --card: #fff;
+      --muted: #64748b;
+      --text: #0f172a;
+      --primary: #4f46e5;
+      --primary-600: #3730a3;
+      --border: #e6e9ef;
+      --danger: #b91c1c;
+      --success: #15803d;
+      --radius: 14px;
+      --glass: rgba(255,255,255,0.6);
     }
 
-    h1 { margin-bottom: 6px; font-size: 26px; }
-
-    .subtitle {
-      font-size: 13px;
-      color: #444;
-      margin-bottom: 16px;
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+      background: var(--bg);
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
     }
 
-    .card {
-      background: #fff;
-      padding: 24px;
-      border-radius: 16px;
-      box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+    .app{width:100%; max-width:1024px}
+    .header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+    .logo{
+      width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,var(--primary),var(--primary-600));
+      display:flex;align-items:center;justify-content:center;color:white;font-weight:700;box-shadow:0 8px 24px rgba(79,70,229,.16)
+    }
+    h1{font-size:22px;margin:0}
+    .subtitle{color:var(--muted);font-size:13px;margin-top:2px}
+
+    .card{
+      background:var(--card);
+      border-radius:20px;
+      padding:28px;
+      box-shadow:0 18px 40px rgba(15,23,42,.06);
+      border:1px solid rgba(2,6,23,.02);
     }
 
-    label {
-      display: block;
-      font-weight: 600;
-      margin-top: 16px;
-      margin-bottom: 4px;
+    .section{
+      padding:14px;
+      border-radius:12px;
+      background:linear-gradient(180deg,rgba(250,250,252,.6),rgba(255,255,255,0.6));
+      margin-bottom:14px;
+      border:1px solid var(--border);
     }
 
-    input[type="text"] {
-      width: 100%;
-      padding: 12px;
-      box-sizing: border-box;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-family: monospace;
-      font-size: 14px;
-    }
+    label{display:block;font-weight:700;font-size:13px;margin-bottom:8px}
+    .controls{display:flex;gap:12px;flex-wrap:wrap}
 
-    #plaintext, #ciphertext {
-      min-height: 150px;
-      padding: 12px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      background: #fff;
-      font-family: monospace;
-      white-space: pre-wrap;
-      word-break: break-all;
+    input[type="text"]{
+      width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);font-family:monospace;font-size:13px;
+      background:#fbfdff;outline:none;transition:box-shadow .14s,border-color .14s;
     }
+    input[type="text"]:focus{box-shadow:0 0 0 4px rgba(79,70,229,.06);border-color:var(--primary)}
 
-    .row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-top: 12px;
+    /* contenteditable boxes */
+    .box{
+      width:100%;min-height:160px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);
+      background:#fbfdff; font-family:monospace;font-size:13px; white-space:pre-wrap; word-break:break-word; outline:none;
     }
+    .box:focus{box-shadow:0 0 0 4px rgba(79,70,229,.06);border-color:var(--primary)}
 
-    .col {
-      flex: 1;
-      min-width: 320px;
+    .row{display:flex;gap:12px;align-items:center}
+    .btns{display:flex;gap:12px;flex-wrap:wrap}
+
+    button{
+      padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:#f1f5f9;font-weight:700;cursor:pointer;
+      transition:transform .12s;
+      min-width:120px;
     }
+    button:hover{transform:translateY(-2px)}
+    .primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .danger{background:#fff6f6;border-color:#fee2e2;color:var(--danger)}
 
-    button {
-      padding: 10px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      background: #f2f2f2;
-    }
+    .msg{margin-top:12px;font-weight:700;color:var(--success);display:none}
+    .error{margin-top:12px;font-weight:700;color:var(--danger);display:none}
 
-    button.primary {
-      background: #111;
-      color: #fff;
-      border-color: #111;
-    }
-
-    .mini {
-      font-size: 12px;
-      color: #555;
-      margin-top: 4px;
-    }
-
+    /* Highlighted IV */
     .iv-highlight {
-      background: #fff3c4;
-      padding: 2px 2px;
-      border-radius: 3px;
+      background: rgba(79,70,229,0.18);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-weight: 700;
+      color: var(--primary-600);
     }
 
-    .msg { color: #0a7a2f; margin-top: 10px; font-weight: 600; }
-    .error { color: #a00; margin-top: 10px; font-weight: 600; display: none; }
+.note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: -4px;
+  margin-bottom: 8px;
+   margin-bottom: 16px; /* <-- Ger en extra tom rad */
+}
 
-    .footer {
-      margin-top: 28px;
-      font-size: 12px;
-      text-align: center;
-      color: #666;
-    }
-
-    /* -----------------------------------
-       MOBILE OPTIMIZATION
-    ----------------------------------- */
-    @media (max-width: 600px) {
-      body {
-        margin: 8px;
-        padding: 8px;
-      }
-
-      .card {
-        padding: 16px;
-      }
-
-      .col {
-        min-width: 100%;
-      }
-
-      button {
-        width: 100%;
-      }
-
-      #plaintext, #ciphertext {
-        min-height: 180px;
-        font-size: 15px;
-      }
-
-      input[type="text"] {
-        font-size: 15px;
-      }
-
-      .row {
-        gap: 8px;
-      }
+    @media (max-width:720px){
+      .row{flex-direction:column}
+      .btns{flex-direction:column}
+      button{width:100%}
     }
   </style>
 </head>
 
 <body>
+<div class="app">
 
-<h1>AES-256-GCM Encryption Tool</h1>
-<div class="subtitle">Client-side authenticated encryption. No data leaves your browser.</div>
-<br>
-
-<div class="card">
-
-  <!-- KEY + IV -->
-  <div class="row">
-    <div class="col">
-      <label>Key (HEX – 64 characters / 32 bytes)</label>
-      <input id="keyhex" type="text" placeholder="64 hex characters">
-      <div class="row">
-        <button id="genKey">Generate Key</button>
-        <button id="copyKey">Copy Key</button>
-      </div>
-      <div class="mini">AES-256 requires exactly 64 hex characters.</div>
-    </div>
-
-    <div class="col">
-      <label>IV (HEX – 24 characters / 12 bytes)</label>
-      <input id="ivhex" type="text" placeholder="24 hex characters">
-      <div class="row">
-        <button id="genIv">Generate IV</button>
-        <button id="copyIv">Copy IV</button>
-      </div>
-      <div class="mini">Do not reuse an IV with the same key.</div>
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">AES</div>
+    <div>
+      <h1>AES-256-GCM Decrypt Tool</h1>
+      <div class="subtitle">Client-side authenticated encryption — AES-256-GCM</div>
     </div>
   </div>
 
-  <!-- PLAINTEXT -->
-  <label>Plaintext</label>
-  <div id="plaintext" contenteditable="true"></div>
+  <!-- CARD -->
+  <div class="card">
 
-  <div class="row">
-    <button id="encryptBtn" class="primary">Encrypt (AES-GCM)</button>
-    <button id="copyCombined">Copy Combined (IV|Ciphertext)</button>
+    <!-- KEY + IV -->
+    <div class="section">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+
+        <div class="col" style="flex:1;min-width:260px">
+          <label>Key (HEX – 64 characters)</label>
+          <input id="keyhex" type="text" maxlength="64">
+
+          <div class="btns" style="margin-top:10px">
+            <button id="genKey">Generate Key</button>
+            <button id="copyKey">Copy Key</button>
+          </div>
+
+          <div class="muted" style="margin-top:6px">32 bytes (64 hex chars).</div>
+        </div>
+
+        <div class="col" style="flex:1;min-width:200px">
+          <label>IV (HEX – 24 characters)</label>
+          <input id="ivhex" type="text" maxlength="24">
+
+          <div class="btns" style="margin-top:10px">
+            <button id="genIv">Generate IV</button>
+            <button id="copyIv">Copy IV</button>
+          </div>
+
+          <div class="muted" style="margin-top:6px">12 bytes (24 hex chars).</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CIPHERTEXT -->
+    <div class="section">
+      <label>Ciphertext - Base64 (Cipher or "IV|Cipher")</label>
+      <div class="note">Highlighted text is IV</div>
+      <div id="ciphertext" class="box" contenteditable="true" spellcheck="false"></div>
+
+      <div class="row" style="margin-top:12px">
+        <div class="btns" style="flex:1">
+          <button id="pasteCombined">Paste Combined</button>
+          <button id="decryptBtn">Decrypt</button>
+          <button id="clearCipherBtn" class="danger">Clear Ciphertext</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAINTEXT -->
+    <div class="section">
+      <label>Plaintext</label>
+      <div id="plaintext" class="box" contenteditable="true" spellcheck="false"></div>
+
+      <div class="row" style="margin-top:12px">
+        <div class="btns" style="flex:1">
+          <button id="encryptCopyBtn" class="primary">Encrypt & Copy Combined</button>
+        </div>
+
+        <div class="btns" style="margin-left:auto">
+          <button id="clearBtn" class="danger">Clear Plaintext</button>
+          <button id="clearAllBtn">Clear All</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="message" class="msg"></div>
+    <div id="error" class="error"></div>
+
+    <div style="margin-top:14px;font-size:12px;color:#64748b;text-align:center">
+      Created by Spaxen Karlsson — fully client-side.
+    </div>
+
   </div>
-
-  <!-- CLEAR PLAINTEXT MOVED HERE -->
-  <div class="row">
-    <button id="clearBtn">Clear Plaintext</button>
-  </div>
-
-  <!-- CIPHERTEXT -->
-  <label>Ciphertext (Base64)</label>
-  <div class="mini">Highlighted text = IV</div>
-  <br>
-
-  <div id="ciphertext" contenteditable="true"></div>
-
-  <div class="row">
-    <button id="pasteCombined">Paste Combined (IV|Ciphertext)</button>
-    <button id="decryptBtn">Decrypt (AES-GCM)</button>
-  </div>
-
-  <div class="row">
-    <button id="clearAllBtn">Clear All</button>
-  </div>
-
-  <div id="message" class="msg"></div>
-  <div id="error" class="error"></div>
-
 </div>
-
-<div class="footer">Created by Spaxen Karlsson.</div>
 
 <script>
 const $ = id => document.getElementById(id);
 
-function err(t){ $("error").style.display="block"; $("error").textContent=t; }
-function msg(t){ $("error").style.display="none"; $("message").textContent=t; }
-
-function hexToBytes(hex) {
-  hex = hex.replace(/\s+/g, "");
-  if (!/^[0-9a-fA-F]*$/.test(hex)) throw Error("HEX contains invalid characters");
-  if (hex.length % 2 !== 0) throw Error("Invalid HEX length");
-  return Uint8Array.from(hex.match(/.{2}/g).map(b => parseInt(b,16)));
+/* Utility: HEX ⇄ Bytes ⇄ Base64 */
+function bytesToHex(bytes){ return [...bytes].map(x => x.toString(16).padStart(2,"0")).join(""); }
+function hexToBytes(hex){
+  hex = hex.trim();
+  if(!/^[0-9a-fA-F]+$/.test(hex)) throw new Error("Invalid HEX");
+  return Uint8Array.from(hex.match(/.{2}/g).map(b=>parseInt(b,16)));
 }
-
-function bytesToHex(bytes) {
-  return [...bytes].map(b => b.toString(16).padStart(2,"0")).join("");
+function base64ToBytes(b64){
+  const bin = atob(b64.trim());
+  return Uint8Array.from(bin, c => c.charCodeAt(0));
 }
+function bytesToBase64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
 
-function bytesToBase64(buf) {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)));
-}
-
-function base64ToBytes(b64) {
-  return Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
-}
-
-async function importKey(hex) {
+/* Key import */
+async function importKey(hex){
   const raw = hexToBytes(hex);
-  if (raw.length !== 32) throw Error("Key must be 32 bytes");
+  if(raw.length !== 32) throw new Error("Key must be 32 bytes");
   return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt","decrypt"]);
 }
 
-async function encrypt(pt, keyHex, ivHex) {
+/* Encrypt/Decrypt */
+async function encrypt(pt, keyHex, ivHex){
   const key = await importKey(keyHex);
   const iv = hexToBytes(ivHex);
-  if (iv.length !== 12) throw Error("IV must be 12 bytes");
   const data = new TextEncoder().encode(pt);
-  const enc = await crypto.subtle.encrypt({name:"AES-GCM",iv,tagLength:128}, key, data);
+  const enc = await crypto.subtle.encrypt({name:"AES-GCM", iv, tagLength:128}, key, data);
   return bytesToBase64(enc);
 }
-
-async function decrypt(ct, keyHex, ivHex) {
+async function decrypt(ct, keyHex, ivHex){
   const key = await importKey(keyHex);
   const iv = hexToBytes(ivHex);
   const data = base64ToBytes(ct);
-  const dec = await crypto.subtle.decrypt({name:"AES-GCM",iv,tagLength:128}, key, data);
+  const dec = await crypto.subtle.decrypt({name:"AES-GCM", iv, tagLength:128}, key, data);
   return new TextDecoder().decode(dec);
 }
 
-function highlightIV(iv, combined) {
-  const [ivPart, ctPart] = combined.split("|");
-  return `<span class="iv-highlight">${ivPart}</span>|${ctPart}`;
-}
+/* UI Helpers */
+function showMessage(t){ $("error").style.display="none"; $("message").style.display="block"; $("message").textContent=t; }
+function showError(t){ $("message").style.display="none"; $("error").style.display="block"; $("error").textContent=t; }
 
-function cleanCiphertextBox() {
-  return $("ciphertext").textContent.trim();
-}
-
-function generateNewIv() {
-  const n = crypto.getRandomValues(new Uint8Array(12));
-  const hex = bytesToHex(n);
-  $("ivhex").value = hex;
-  return hex;
-}
-
-/* BUTTONS */
-
+/* Generate Keys / IV */
 $("genKey").onclick = () => {
-  const key = crypto.getRandomValues(new Uint8Array(32));
-  $("keyhex").value = bytesToHex(key);
-  msg("New AES-256 key generated");
+  $("keyhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
+  showMessage("Key generated");
 };
-
 $("genIv").onclick = () => {
-  generateNewIv();
-  msg("New IV generated");
+  $("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
+  showMessage("IV generated");
 };
 
-$("copyKey").onclick = () => {
-  navigator.clipboard.writeText($("keyhex").value);
-  msg("Key copied");
-};
+/* Copy Buttons */
+$("copyKey").onclick = () => navigator.clipboard.writeText($("keyhex").value);
+$("copyIv").onclick = () => navigator.clipboard.writeText($("ivhex").value);
 
-$("copyIv").onclick = () => {
-  navigator.clipboard.writeText($("ivhex").value);
-  msg("IV copied");
-};
 
-$("copyCombined").onclick = () => {
-  const iv = $("ivhex").value.trim();
-  const ct = cleanCiphertextBox();
+/* Encrypt + Copy Combined */
+$("encryptCopyBtn").onclick = async () => {
+  try {
+    // 1. Skapa nytt IV för *denna* kryptering
+    const newIv = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
 
-  if (ct.includes("|")) {
-    navigator.clipboard.writeText(ct);
-  } else {
-    navigator.clipboard.writeText(iv + "|" + ct);
+    // 2. Kryptera med det nya IV:t
+    const ct = await encrypt($("plaintext").innerText, $("keyhex").value, newIv);
+
+    // 3. Skapa combined string
+    const combined = newIv + "|" + ct;
+
+    // 4. Skriv ut i ciphertext-rutan
+    $("ciphertext").textContent = combined;
+
+    // 5. Highlighta IV
+    applyIvHighlight();
+
+    // 6. Kopiera till clipboard
+    await navigator.clipboard.writeText(combined);
+
+    showMessage("Encrypted and copied");
+
+    // 7. Generera nytt IV för NÄSTA kryptering (separat från newIv)
+    $("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
+
+  } catch (e) {
+    showError(e.message);
   }
-  msg("Combined copied");
 };
 
+
+
+/* Paste Combined */
 $("pasteCombined").onclick = async () => {
-  try {
+  try{
     const txt = await navigator.clipboard.readText();
-    if (!txt.includes("|")) throw Error("Format must be IV|Ciphertext");
-    const [iv, ct] = txt.split("|");
-    $("ivhex").value = iv;
-    $("ciphertext").innerHTML = highlightIV(iv, txt);
-    msg("Combined pasted");
-  } catch(e){ err(e.message); }
+    if(!txt.includes("|")) throw new Error("Combined format required (IV|Ciphertext)");
+    $("ciphertext").textContent = txt;
+    applyIvHighlight();
+    showMessage("Combined pasted");
+  }catch(e){ showError(e.message); }
 };
 
-/* ENCRYPT */
-$("encryptBtn").onclick = async () => {
-  try {
-    const pt = $("plaintext").textContent.trim();
-    const key = $("keyhex").value.trim();
-    const iv = $("ivhex").value.trim();
-
-    const ct = await encrypt(pt, key, iv);
-    const combined = iv + "|" + ct;
-
-    $("ciphertext").innerHTML = highlightIV(iv, combined);
-
-    msg("Encryption successful");
-
-    generateNewIv(); // new IV for next message
-  } catch(e){ err(e.message); }
-};
-
-/* DECRYPT */
+/* Decrypt (single button, unified logic) */
 $("decryptBtn").onclick = async () => {
   try {
-    const raw = cleanCiphertextBox();
+    const raw = $("ciphertext").textContent.trim();
+    if(!raw) throw new Error("Ciphertext is empty");
+
     let iv, ct;
 
-    if (raw.includes("|")) {
+    if(raw.includes("|")){
       const parts = raw.split("|");
       iv = parts[0].trim();
       ct = parts[1].trim();
       $("ivhex").value = iv;
     } else {
       iv = $("ivhex").value.trim();
-      if (!iv) throw Error("No IV provided");
       ct = raw;
     }
 
     const pt = await decrypt(ct, $("keyhex").value.trim(), iv);
     $("plaintext").textContent = pt;
-
-    msg("Decryption successful");
-
-    generateNewIv(); // renewal after decrypt
-  } catch(e){ err("Decryption failed: " + e.message); }
+    showMessage("Decryption successful");
+  } catch(e){
+    showError("Decryption failed: " + e.message);
+  }
 };
 
-/* CLEAR */
+/* Clear Ciphertext */
+$("clearCipherBtn").onclick = () => {
+  $("ciphertext").textContent = "";
+  showMessage("Ciphertext cleared");
+};
+
+/* Clear Plaintext */
 $("clearBtn").onclick = () => {
   $("plaintext").textContent = "";
-  generateNewIv();
-  msg("");
+  $("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
+  showMessage("Plaintext cleared");
 };
 
+/* Clear All */
 $("clearAllBtn").onclick = () => {
   $("plaintext").textContent = "";
   $("ciphertext").textContent = "";
-  $("keyhex").value = "";
-  $("ivhex").value = "";
-  generateNewIv();
-  msg("");
+  $("message").style.display="none";
   $("error").style.display="none";
 };
+
+/* Auto-select on focus */
+function enableAutoSelect(el) {
+  el.addEventListener("focus", () => {
+    setTimeout(() => {
+      if (el.tagName === "INPUT") {
+        el.select();
+      } else {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }, 10);
+  });
+}
+
+/* Highlight IV inside ciphertext */
+function applyIvHighlight() {
+  const el = $("ciphertext");
+  let raw = el.textContent.trim();
+
+  if (!raw.includes("|")) {
+    el.textContent = raw;
+    return;
+  }
+
+  const [iv, ct] = raw.split("|");
+
+  if (!/^[0-9a-fA-F]{24}$/.test(iv.trim())) {
+    el.textContent = raw;
+    return;
+  }
+
+  el.innerHTML = `<span class="iv-highlight">${iv}</span>|${ct}`;
+}
+
+/* Highlight on input and blur */
+$("ciphertext").addEventListener("input", applyIvHighlight);
+$("ciphertext").addEventListener("blur", applyIvHighlight);
+
+/* Auto-select for all fields */
+enableAutoSelect($("keyhex"));
+enableAutoSelect($("ivhex"));
+enableAutoSelect($("ciphertext"));
+enableAutoSelect($("plaintext"));
+
+/* Fresh IV on load */
+$("ivhex").value = bytesToHex(crypto.getRandomValues(new Uint8Array(12)));
 </script>
 
 </body>
